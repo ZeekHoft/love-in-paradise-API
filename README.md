@@ -1,4 +1,4 @@
-## FLASK SERVER FOR RESEARCH
+## FLASK SERVER API
 
 Run these commands:
 
@@ -27,7 +27,7 @@ python app.py
 ```
 
 
-## For running docker
+## FOR RUNNING DOCKER
 ```
 docker run -p 8080:8080 flask_api_docker_file
 ```
