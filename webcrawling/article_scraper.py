@@ -1,39 +1,56 @@
+from time import sleep
 import newspaper
 
+# import validators
 
-list_of_urls = [
-           
-            "https://www.bworldonline.com/top-stories/2025/09/05/695808/ng-outstanding-debt-surges-to-record-p17-56-trillion-as-of-end-july",
-            "https://www.rappler.com/life-and-style/relationships/two-pronged-ghosted-someone-feeling-guilty-confused/",
-            "https://www.rappler.com/environment/philippines-renewable-sector-races-meet-targets-coal-plants-linger-lng-grows/"
-            ]
+# list_of_urls = [
+#             "https://www.bworldonline.com/top-stories/2025/09/05/696236/philippine-banks-npl-ratio-rises-to-8-month-high-in-july",
+#             "https://www.bworldonline.com/top-stories/2025/09/05/695808/ng-outstanding-debt-surges-to-record-p17-56-trillion-as-of-end-july",
+#             "https://www.bworldonline.com/top-stories/2025/09/05/696273/new-law-allows-foreign-investors-to-lease-land-in-the-philippines-for-up-to-99-years",
+#             "https://www.bworldonline.com/top-stories/2025/09/05/696136/philippine-inflation-quickens-to-1-5-in-august"
+#             ]
 
 
-
-
+# Parse through each url and display its content
 class ArticleScraper:
-    
-        def __init__(self):
-            self.links_data = {}
-        
-        def article_scraper(self, article_links):
-            try:
-                for url in article_links:
-                    artcile = newspaper.article(url="%s" % (url), language="en")
-                    artcile.download()
-                    artcile.parse()
-                
-                    self.links_data[url] = {
-                        "headline": artcile.title,
-                        "content": artcile.text,
-                        #add more specific data to retreive, date, author etc...
-                    }
-                return self.links_data
+    def article_scraper(self, article_links, delay=1.0):
+        links_data = {}
 
-            except Exception as e:
-                return f"Error in scraping {e}"
+        try:
+
+            sleep(delay)  # delay to avoid limit rates
+
+            # add valid URL detector
+            for url in article_links:
+                try:
+                    url_i = newspaper.Article(url="%s" % (url), language="en")
+                    url_i.download()
+                    url_i.parse()
+
+                    # Only add if we got valid content
+                    if url_i.title and url_i.text:
+                        links_data[url] = {
+                            "headline": url_i.title,
+                            "content": url_i.text,
+                        }
+                    else:
+                        print(f"Skipping {url} - no content extracted")
+
+                except Exception as e:
+                    # Log error but continue with other articles
+                    print(f"Error scraping {url}: {e}")
+                    continue
+
+            print(
+                f"Successfully scraped {len(links_data)} out of {len(article_links)} articles"
+            )
+            return links_data
+            # return "\n".join(article_content)
+        except Exception as e:
+            # Return empty dict instead of string
+            print(f"Error in article scraper: {e}")
+            return {}
 
 
-
-scrape = ArticleScraper()
-print(scrape.article_scraper(list_of_urls))
+# news = ArticleScraper()
+# print(news.article_scraper(list_of_urls))

@@ -15,19 +15,28 @@ except Exception as e:
 URL = "https://www.googleapis.com/customsearch/v1"
 
 
-class Search_articles(object):
+def search_news(
+    search_query,
+    date_restrict="",
+    exact_terms="",
+    exclude_terms="",
+    or_terms="",
+    results_amt=10,
+):
+    """
+    Returns a list of news article URLs based on search query parameters.
+    Supports pagination to get more than 10 results.
+    """
+    article_urls = []
 
-    # Returns a list of urls of news articles based on search query
-    def search_news(
-        self,
-        search_query,
-        date_restrict="",
-        exact_terms="",
-        exclude_terms="",
-        or_terms="",
-        results_amt=10,
-    ):
-        article_urls = []
+    if results_amt > 100:
+        print("Search results can not be more than 100")
+        results_amt = 100
+
+    start = 1  # first item in page 1 (page 2 is 11)
+    num = 10 if results_amt > 10 else results_amt  # cap at 10
+
+    while results_amt > 0:
         params = {
             "q": search_query,
             "key": API_KEY,
@@ -35,28 +44,61 @@ class Search_articles(object):
             "dateRestrict": date_restrict,  # dwmy[number]
             "exactTerms": exact_terms,
             "excludeTerms": exclude_terms,
-            "num": results_amt,
+            "num": num,
+            "start": start,
             "orTerms": or_terms,
         }
 
-        response = requests.get(url=URL, params=params)
-        results = response.json()
+        try:
+            response = requests.get(url=URL, params=params, timeout=10)
 
-        if "items" in results:
-            for result in results["items"]:
-                article_url = result["link"]
-                article_urls.append(article_url)
+            # Debug info
+            print(f"API Request: start={start}, num={num}")
+            print(f"API Response Status: {response.status_code}")
 
-        return article_urls
+            if response.status_code != 200:
+                print(f"API Error: Status {response.status_code}")
+                print(f"Response: {response.text[:500]}")
+                break
 
+            results = response.json()
 
-# res = Search_articles()
-# values = (res.search_news("Will new US sanctions on ICC judges be felt in Duterte case?"))
+            # Check for errors
+            if "error" in results:
+                print(f"Google API Error: {results['error']}")
+                if "message" in results["error"]:
+                    print(f"Error message: {results['error']['message']}")
+                break
 
-# for i in values:
-#     print(i)
+            # Debug search info
+            if "searchInformation" in results:
+                total = results["searchInformation"].get("totalResults", "0")
+                print(f"Total results available: {total}")
 
-# results = search_news("Will new US sanctions on ICC judges be felt in Duterte case?")
-# results = search_news("Will new US sanctions on ICC judges be felt in Duterte case?")
-# for i in results:
-#     print(i)
+            # Extract URLs
+            if "items" in results:
+                for result in results["items"]:
+                    article_url = result["link"]
+                    article_urls.append(article_url)
+                print(f"Found {len(results['items'])} articles in this batch")
+            else:
+                print("No items in results - search may have no matches")
+                break
+
+            # Move to next page
+            results_amt -= num
+            start += 10
+            num = 10 if results_amt > 10 else results_amt
+
+        except requests.exceptions.Timeout:
+            print("Request timeout - API took too long to respond")
+            break
+        except requests.exceptions.RequestException as e:
+            print(f"Request error: {e}")
+            break
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            break
+
+    print(f"Total articles collected: {len(article_urls)}")
+    return article_urls
