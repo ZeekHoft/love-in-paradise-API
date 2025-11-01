@@ -146,7 +146,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         print("Scraped Articles ==================================")
         for url, data in news_data.items():
             print(url)
-            print(data["headline"])
+            print(data["source_name"], "|", data["headline"])
 
         results["currentProcess"] = "Searching for relevant information"
         results["progress"] = 4 / 8
