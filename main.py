@@ -125,7 +125,8 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
 
         # Scrape each article
         articleScraper = ArticleScraper()
-        news_data = articleScraper.article_scraper(articles)
+        articleScraper.timeout = 60
+        news_data = articleScraper.scrape_multithreaded(articles)
         if len(news_data) == 0:
             print("Problem occurred in scraping data")
             results["justification"] = "Problem occurred in scraping data"

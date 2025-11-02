@@ -1,5 +1,6 @@
 from time import sleep
 import newspaper
+from newspaper.mthreading import fetch_news
 import re
 
 NEWS_NAMES = {
@@ -14,6 +15,9 @@ NEWS_NAMES = {
 
 # Parse through each url and display its content
 class ArticleScraper:
+    timeout = 30
+    scrape_threads = 8
+
     def article_scraper(self, article_links, delay=1.0):
         links_data = {}
 
@@ -24,7 +28,9 @@ class ArticleScraper:
             # add valid URL detector
             for url in article_links:
                 try:
-                    url_i = newspaper.Article(url="%s" % (url), language="en")
+                    url_i = newspaper.Article(
+                        url="%s" % (url), language="en", timeout=self.timeout
+                    )
                     url_i.download()
                     url_i.parse()
 
@@ -48,6 +54,32 @@ class ArticleScraper:
             )
             return links_data
             # return "\n".join(article_content)
+        except Exception as e:
+            # Return empty dict instead of string
+            print(f"Error in article scraper: {e}")
+            return {}
+
+    def scrape_multithreaded(self, article_links: list[str]):
+        articles_data = {}
+        try:
+            articles = [
+                newspaper.Article(url=link, timeout=self.timeout)
+                for link in article_links
+            ]
+            results = fetch_news(articles, threads=self.scrape_threads)
+            for i in range(len(results)):
+                # Only add if we got valid content
+                result = results[i]
+                url = article_links[i]
+                if result.title and result.text:
+                    articles_data[url] = {
+                        "source_name": self.get_source_name(url),
+                        "headline": result.title,
+                        "content": result.text,
+                    }
+                else:
+                    print(f"Skipping {url} - no content extracted")
+            return articles_data
         except Exception as e:
             # Return empty dict instead of string
             print(f"Error in article scraper: {e}")
