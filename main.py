@@ -173,13 +173,15 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             else:
                 print("SCORE | SENTENCE")
                 for sentence, score in ss:
-                    print(f"{score:.4f} | {sentence}")
+                    print(f"{score:.3f} | {sentence[:100]}")
                     if url not in relevant_sentences.keys():
                         relevant_sentences[url] = [sentence]
                         news_data[url]["sentences"] = [sentence]
+                        news_data[url]["similarity_scores"] = [score]
                     else:
                         relevant_sentences[url].append(sentence)
                         news_data[url]["sentences"].append(sentence)
+                        news_data[url]["similarity_scores"].append(score)
             print()
 
         # Discard urls with no relevant sentences
