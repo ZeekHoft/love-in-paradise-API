@@ -56,11 +56,6 @@ class ArticleScoring:
         # Debug output
         # print(f"  Alignments for this article: {len(alignments)}")
 
-        evidence_count = {
-            "neutral": 0,
-            "entailment": 0,
-            "contradiction": 0,
-        }
         evidence_values = {
             "neutral": 0,
             "entailment": 0,
@@ -103,8 +98,7 @@ class ArticleScoring:
 
             normalized_scores.append(sentence_score)
 
-            evidence_count[label] += 1
-            evidence_values[label] += alignment["score"]
+            evidence_values[label] += alignment_score
 
         entailment = evidence_values["entailment"] + common_count
         contradiction = evidence_values["contradiction"]
