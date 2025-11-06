@@ -10,10 +10,18 @@ class ArticleScoring:
         claim: str,
         claim_triples: list[tuple],
         oie: OpenInformationExtraction,
+        min_similarity: float = None,
+        max_similarity: float = None,
     ):
         self.claim = claim
         self.claim_triples = claim_triples
         self.oie = oie
+        self.min_similarity = min_similarity
+        self.max_similarity = max_similarity
+        if min_similarity or max_similarity:
+            print(
+                f"Article scoring initialized with min:{min_similarity:.1f} and max:{max_similarity:.1f}"
+            )
 
     def score_article(self, article: dict[str, any]):
         """
@@ -22,8 +30,10 @@ class ArticleScoring:
         sentences = article["sentences"]
         similarity_scores = article["similarity_scores"]
 
-        min_similarity = min(similarity_scores)
-        max_similarity = max(similarity_scores)
+        if self.min_similarity is None:
+            self.min_similarity = min(similarity_scores)
+        if self.max_similarity is None:
+            self.max_similarity = max(similarity_scores)
 
         print(article["headline"])
 
@@ -58,34 +68,38 @@ class ArticleScoring:
         }
 
         normalized_scores = []
+        weight_factor = 1.5
 
-        for i in range(len(alignments)):
-            alignment = alignments[i]
+        for i in range(len(sentences)):
             sentence = sentences[i]
+            alignment = alignments[i]
             similarity_score = similarity_scores[i]
             label = alignment["label"]
             alignment_score = alignment["score"]
 
             # Normalize similarity score
-            if max_similarity > min_similarity:
-                normalized_similarity = (similarity_score - min_similarity) / (
-                    max_similarity - min_similarity
+            if self.max_similarity > self.min_similarity:
+                normalized_similarity = (similarity_score - self.min_similarity) / (
+                    self.max_similarity - self.min_similarity
                 )
             else:
                 normalized_similarity = 1.0
 
+            normalized_similarity = normalized_similarity**weight_factor
+
             # Weighted scoring
             match label:
                 case "entailment":
-                    sentence_score = alignment_score * (1 + normalized_similarity)
+                    sentence_score = alignment_score * normalized_similarity
                 case "contradiction":
-                    sentence_score = -alignment_score * (1 + normalized_similarity)
+                    sentence_score = -alignment_score * normalized_similarity
                 case _:
                     sentence_score = 0
 
-            print(
-                f"{similarity_score:.3f} | {label[:4]} | {alignment_score:.4f} | {sentence_score: .4f} | {sentence[:100]}..."
-            )
+            if label != "neutral":
+                print(
+                    f"{similarity_score:.3f} | {label[:4]} | {alignment_score:.4f} | {normalized_similarity:.4f} | {sentence_score: .4f} | {sentence[:100]}..."
+                )
 
             normalized_scores.append(sentence_score)
 
@@ -97,10 +111,13 @@ class ArticleScoring:
 
         # print(f"  Entailment: {entailment}, Contradiction: {contradiction}")
 
-        final_score = np.average(normalized_scores)
-        final_score = np.tanh(final_score)
+        if normalized_scores:
+            final_score = np.average(normalized_scores)
+            final_score = np.tanh(final_score)
+        else:
+            final_score = 0.0
 
         # Score calculation
         score = (entailment - contradiction) / (entailment + contradiction + 1)
-        article["score"] = score
-        print(f"  Final score: {score} or {final_score}\n")
+        article["score"] = final_score
+        print(f"  Final score OLD: {score}, NEW:{final_score}\n")
