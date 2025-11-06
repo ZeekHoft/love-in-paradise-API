@@ -160,6 +160,8 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         sentence_similarity.set_main_sentence(claim_input)
         relevant_sentences = {}
         urls_to_remove = []
+        min_score = 1.0
+        max_score = 0.0
         for url, data in news_data.items():
             ss = sentence_similarity.find_similar_sentences(
                 data["content"],
@@ -173,6 +175,10 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             else:
                 print("SCORE | SENTENCE")
                 for sentence, score in ss:
+                    if score < min_score:
+                        min_score = score
+                    if score > max_score:
+                        max_score = score
                     print(f"{score:.3f} | {sentence[:100]}")
                     if url not in relevant_sentences.keys():
                         relevant_sentences[url] = [sentence]
@@ -210,10 +216,13 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
 
         print("Scoring each article")
         article_scoring = ArticleScoring(
-            claim=claim_input,
             oie=info_ext,
+            claim=claim_input,
+            max_similarity=max_score,
+            min_similarity=min_score,
             claim_triples=claim_triples,
         )
+        print("SCORE | LABL | ASCORE | PRODUCT | SENTENCE")
         for article in news_data.values():
             # Score each article based on semantic entailment and matching triples
             article_scoring.score_article(article=article)
@@ -227,17 +236,19 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         agree = []
         disagree = []
         urls_to_remove = []
-        for url, article in news_data.items():
+        for url, article in sorted(
+            news_data.items(), key=lambda data: data[1]["score"], reverse=True
+        ):
             score = article["score"]
-            print(f"DEBUG: Article '{article['headline'][:50]}...' scored: {score}")
-            if score > 0 or score < 0:
-                print(f"{score: .2f} | {article['headline']}")
+            # print(f"DEBUG: Article '{article['headline'][:50]}...' scored: {score}")
+            print(f"{score: .5f} | {article['headline'][:50]}...")
+            if score > 0.01 or score < -0.01:
                 if score > 0:
                     agree.append(article)
                 else:
                     disagree.append(article)
-            elif score == 0:
-                print(f"Article scored 0, removing: {article['headline'][:50]}")
+            else:
+                print(f"Article scored low or 0, removing: {article['headline'][:50]}")
                 urls_to_remove.append(url)
 
         # Discard urls with no score
