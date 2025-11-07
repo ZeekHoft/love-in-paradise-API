@@ -262,7 +262,9 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             yield results
             return
         average_score = sum(article_scores) / len(article_scores)
-        print(f"Final Score: {average_score}")
+        print(
+            f"Final Score: {average_score}, Weighted Score: {aggregate_scores(article_scores)}"
+        )
 
         # AGGREGATION
         # ===============================================================
@@ -420,6 +422,29 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         results["progress"] = 8 / 8
         yield results
         return
+
+
+def aggregate_scores(final_scores):
+
+    def calculate_weighted(score):
+        # Linear scaling weight
+        abs_score = abs(score)
+        if abs_score > 0.8:
+            weight = 2.0
+        elif abs_score > 5:
+            weight = 1.5
+        else:
+            weight = 1.0
+        return score * weight
+
+    # Calculate the total weighted score
+    total_weighted_score = 0
+    for score in final_scores:
+        total_weighted_score += calculate_weighted(score)
+
+    # Final average score
+    average_score = total_weighted_score / len(final_scores)
+    return average_score
 
 
 if __name__ == "__main__":
