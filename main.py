@@ -163,18 +163,18 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         min_score = 1.0
         max_score = 0.0
         for url, data in news_data.items():
-            ss = sentence_similarity.find_similar_sentences(
+            similar_sentences = sentence_similarity.find_similar_sentences(
                 data["content"],
                 cutoff_score=0.40,
             )
             print(data["headline"])
-            if ss == []:
+            if similar_sentences == []:
                 print("No similar sentences found.")
                 urls_to_remove.append(url)
 
             else:
                 print("SCORE | SENTENCE")
-                for sentence, score in ss:
+                for sentence, score in similar_sentences:
                     if score < min_score:
                         min_score = score
                     if score > max_score:
@@ -196,7 +196,22 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             news_data.pop(key_url)
         print()
 
+        sorted_by_score = sorted(
+            news_data.keys(),
+            key=lambda url: max(news_data[url]["similarity_scores"]),
+            reverse=True,
+        )
+
         print(f"Total articles with relevant content: {len(relevant_sentences)}")
+
+        print(f"Sorted by similarity score:")
+        index = 1
+        for url in sorted_by_score:
+            print(
+                f"{index:02}. {max(news_data[url]["similarity_scores"]):.2f} - {url}:"
+            )
+            index += 1
+        print()
 
         # Information Extraction
         # ===============================================================
