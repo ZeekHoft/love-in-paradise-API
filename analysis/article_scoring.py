@@ -107,7 +107,7 @@ class ArticleScoring:
 
         if normalized_scores:
             final_score = np.average(normalized_scores)
-            final_score = np.tanh(final_score)
+            final_score = float(np.tanh(final_score))
         else:
             final_score = 0.0
 
@@ -115,3 +115,4 @@ class ArticleScoring:
         score = (entailment - contradiction) / (entailment + contradiction + 1)
         article["score"] = final_score
         print(f"  Final score OLD: {score}, NEW:{final_score}\n")
+        return final_score
