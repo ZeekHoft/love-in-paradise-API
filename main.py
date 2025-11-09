@@ -237,11 +237,43 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             min_similarity=min_score,
             claim_triples=claim_triples,
         )
-        print("SCORE | LABL | ASCORE | PRODUCT | SENTENCE")
-        for article in news_data.values():
+        print("SIMILARITY | LABEL | ALIGNMENT | WEIGHTED SCORE | SENTENCE")
+        last_score = None
+        previous_consistent = True
+        current_consistent = True
+        stopped_early = False
+        for url in sorted_by_score:
+            article = news_data[url]
             # Score each article based on semantic entailment and matching triples
-            article_scoring.score_article(article=article)
-        print("Done scoring\n")
+            latest_score = article_scoring.score_article(article=article)
+            if latest_score != 0:
+                print(f"Latest score is {latest_score:.2f}. ", end="")
+
+                # Continue checking when scores are past threshold
+                if abs(latest_score) > 0.3:
+                    last_score = None
+                    previous_consistent = True
+                    current_consistent = True
+
+                if last_score is not None:
+                    # Stop scoring when inconsistency is encountered
+                    current_consistent = (latest_score > 0) == (last_score > 0)
+                    if current_consistent:
+                        print("Last 2 numbers are consistent.")
+                    elif not previous_consistent and not current_consistent:
+                        print("Inconsistent scores. Further scoring stopped.")
+                        stopped_early = True
+                        break
+                    else:
+                        print("Last 2 numbers are not consistent.")
+                else:
+                    print("First number.")
+                last_score = latest_score
+                previous_consistent = current_consistent
+        if not stopped_early:
+            print("Scoring process ended with all articles scored.\n")
+        else:
+            print("Done scoring. Some articles were not scored.\n")
 
         results["currentProcess"] = "Aggregating Scores"
         results["progress"] = 6 / 8
@@ -251,24 +283,25 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         agree = []
         disagree = []
         urls_to_remove = []
-        for url, article in sorted(
-            news_data.items(), key=lambda data: data[1]["score"], reverse=True
-        ):
-            score = article["score"]
-            # print(f"DEBUG: Article '{article['headline'][:50]}...' scored: {score}")
-            print(f"{score: .5f} | {article['headline'][:50]}...")
+        for url in sorted_by_score:
+            article = news_data[url]
+            score = article.get("score", 0)
             if score > 0.01 or score < -0.01:
+                print(f"{score: .5f} | {article['headline'][:50]}...")
                 if score > 0:
-                    agree.append(article)
+                    agree.append(score)
                 else:
-                    disagree.append(article)
+                    disagree.append(score)
             else:
-                print(f"Article scored low or 0, removing: {article['headline'][:50]}")
                 urls_to_remove.append(url)
+        print()
 
         # Discard urls with no score
+        print(f"Removing {len(urls_to_remove)} article/s that scored low or 0:")
         for key_url in urls_to_remove:
+            print(f"Removed: {news_data[key_url]['headline'][:50]}")
             news_data.pop(key_url)
+        print()
 
         article_scores = [a["score"] for a in news_data.values() if a["score"] != 0]
         if len(article_scores) == 0:
