@@ -311,23 +311,34 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             return
 
         print("Statistics")
-        win_count = len(agree) > len(disagree)
-        win_highest = max(agree) > abs(min(disagree))
-        win_total = sum(agree) > abs(sum(disagree))
-        print(f"Article Count: {len(agree)} Agree vs {len(disagree)} Disagree")
-        print(
-            f"Highest Score: {max(agree):.2f} Agree vs {abs(min(disagree)):.2f} Disagree"
-        )
-        print(
-            f"Total Overall: {sum(agree):.2f} Agree vs {abs(sum(disagree)):.2f} Disagree"
-        )
-        print("Winner: ", end="")
-        print("Agree" if win_count else "Disagree", end=", ")
-        print("Agree" if win_highest else "Disagree", end=", ")
-        print("Agree" if win_total else "Disagree")
-        print(
-            f"Most {"Agree" if [win_count, win_highest, win_total].count(True) >= 2 else "Disagree"}"
-        )
+        if agree and disagree:
+            win_count = len(agree) >= len(disagree)
+            win_highest = max(agree) > abs(min(disagree))
+            win_total = sum(agree) > abs(sum(disagree))
+            conditions = [win_count, win_highest, win_total]
+            winning_side = None
+
+            # Score verdict only based on side with majority evidence
+            if conditions.count(True) == 3:
+                winning_side = "Agree"
+                article_scores = agree
+            elif conditions.count(False) == 3:
+                winning_side = "Disagree"
+                article_scores = disagree
+
+            print(f"Article Count: {len(agree)} Agree vs {len(disagree)} Disagree")
+            print(
+                f"Highest Score: {max(agree):.2f} Agree vs {abs(min(disagree)):.2f} Disagree"
+            )
+            print(
+                f"Total Overall: {sum(agree):.2f} Agree vs {abs(sum(disagree)):.2f} Disagree"
+            )
+            print("Winner: ", end="")
+            print("Agree" if win_count else "Disagree", end=", ")
+            print("Agree" if win_highest else "Disagree", end=", ")
+            print("Agree" if win_total else "Disagree")
+            if winning_side is not None:
+                print(f"Most {"Agree" if winning_side else "Disagree"}")
 
         verdict_score = sum(article_scores) / len(article_scores)
         print(
