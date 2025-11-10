@@ -427,7 +427,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                         if alignments:
                             evidence = max(alignments, key=lambda x: x["score"])
                             justification += (
-                                f"{listcount}. {article['headline']}\n"
+                                f"{listcount}. {article['source_name']} | {article['headline']}\n"
                                 + f"Evidence: {evidence['sentence']}\n"
                             )
                         else:
