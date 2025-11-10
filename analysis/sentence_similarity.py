@@ -26,7 +26,7 @@ class SentenceSimilarity:
         tokenized_sentences = []
         for sent in doc.sents:
             sentences_found = re.split(r"\n+", sent.text)
-            tokenized_sentences += [s for s in sentences_found if s != ""]
+            tokenized_sentences += self._clean_sentences(sentences_found)
 
         # Encode sentences
         ts_encoding = self.model.encode(tokenized_sentences)
@@ -50,3 +50,11 @@ class SentenceSimilarity:
         ]
 
         return top_sentences
+
+    def _clean_sentences(self, sentences: list[str]):
+        valid_sentences = []
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence != "" and not sentence.startswith("Claim:"):
+                valid_sentences.append(sentence)
+        return valid_sentences
