@@ -329,9 +329,9 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             f"Most {"Agree" if [win_count, win_highest, win_total].count(True) >= 2 else "Disagree"}"
         )
 
-        average_score = sum(article_scores) / len(article_scores)
+        verdict_score = sum(article_scores) / len(article_scores)
         print(
-            f"Final Score: {average_score}, Weighted Score: {aggregate_scores(article_scores)}"
+            f"Final Score: {verdict_score}, Weighted Score: {aggregate_scores(article_scores)}"
         )
 
         # AGGREGATION
@@ -355,15 +355,15 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # Verdict Assigment
         THRESHOLD1 = 0.3
         THRESHOLD2 = 0.45
-        if -THRESHOLD1 < average_score < THRESHOLD1:
+        if -THRESHOLD1 < verdict_score < THRESHOLD1:
             verdict = "UNSURE"
-        elif average_score <= -THRESHOLD2:
+        elif verdict_score <= -THRESHOLD2:
             verdict = "FALSE"
-        elif average_score <= -THRESHOLD1:
+        elif verdict_score <= -THRESHOLD1:
             verdict = "LIKELY FALSE"
-        elif average_score >= THRESHOLD2:
+        elif verdict_score >= THRESHOLD2:
             verdict = "TRUE"
-        elif average_score >= THRESHOLD1:
+        elif verdict_score >= THRESHOLD1:
             verdict = "LIKELY TRUE"
 
         # JUSTIFICATION GENERATION
@@ -388,7 +388,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             justification = ""
             if len(article_scores) >= 3:
                 # Get top 3 articles in support of verdict
-                reverse = average_score > 0
+                reverse = verdict_score > 0
                 top3_scores = sorted(article_scores, reverse=reverse)[:3]
 
                 justification += (
@@ -400,7 +400,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                 for article in news_data.values():
                     if article["score"] in top3_scores:
                         # Filter alignments based on verdict type
-                        if average_score > 0:
+                        if verdict_score > 0:
                             alignments = [
                                 a
                                 for a in article.get("alignments", [])
@@ -434,7 +434,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                 listcount = 1
                 for article in news_data.values():
                     # Filter alignments based on verdict type
-                    if average_score > 0:
+                    if verdict_score > 0:
                         alignments = [
                             a
                             for a in article.get("alignments", [])
