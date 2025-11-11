@@ -338,7 +338,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             print("Agree" if win_highest else "Disagree", end=", ")
             print("Agree" if win_total else "Disagree")
             if winning_side is not None:
-                print(f"Most {"Agree" if winning_side else "Disagree"}")
+                print(f"Most {winning_side}")
 
         verdict_score = sum(article_scores) / len(article_scores)
         print(
