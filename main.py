@@ -134,11 +134,15 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             return
 
         """
+        News Data Dictionary Structure
         news_data = {
-            "headline": HEADLINE,
-            "content": CONTENT,
-            "sentences": will be compared to claim,
-            "link": url
+            url: {
+                "headline": HEADLINE,
+                "content": CONTENT,
+                "source_name": SOURCE,
+                "sentences": will be compared to claim,
+                "link": url
+            },
         }
         """
 
