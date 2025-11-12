@@ -217,6 +217,47 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             index += 1
         print()
 
+        # LARGE LANGUAGE MODEL FACT-CHECKING
+        # Use LLM agent for determining the verdict
+        if use_llm:
+            print("==============================")
+            print("LLM Response:")
+            fca = FactCheckerAgent(claim=claim_input, knowledge=str(news_data))
+            agent_response = fca.verify()
+            if agent_response:
+
+                # LLM Specific
+                results["verdict"] = agent_response[0]
+                results["justification"] = agent_response[1]
+                results["confidence"] = 0
+
+                # Frontend display
+                results["sources"] = list(news_data.keys())
+                results["headlines"] = {
+                    key: value["headline"].replace('"', "'")
+                    for key, value in news_data.items()
+                }
+                results["currentProcess"] = "Complete"
+                results["progress"] = 8 / 8
+
+                log_collector.paradise_logs(
+                    log_collector.user_input(claim_input),
+                    log_collector.valid_claim(results),
+                    log_collector.search_log(search_query),
+                )
+
+                yield results
+                return
+            else:
+                results["justification"] = "Error: No response from LLM"
+                results["currentProcess"] = "Error"
+                results["progress"] = 8 / 8
+                yield results
+                return
+
+        # End of LLM section ======================================
+        # Code afterwards is the manual NLP fact-checking algorithm
+
         # Information Extraction
         # ===============================================================
         # Gets subject, predicate, object triples
@@ -382,72 +423,21 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             verdict = "LIKELY TRUE"
 
         # JUSTIFICATION GENERATION
-        if use_llm:
-            # Use LLM agent
-            print("==============================")
-            print("LLM Response:")
-            fca = FactCheckerAgent(claim=claim_input, knowledge=str(news_data))
-            agent_response = fca.verify()
-            if agent_response:
-                results["verdict"] = agent_response[0]
-                results["justification"] = agent_response[1]
-                results["confidence"] = 0
-            else:
-                results["justification"] = "Error: No response from LLM"
-                results["currentProcess"] = "Error"
-                results["progress"] = 8 / 8
-                yield results
-                return
-        else:
-            # Manual justification based on top articles
-            justification = ""
-            if len(article_scores) >= 3:
-                # Get top 3 articles in support of verdict
-                reverse = verdict_score > 0
-                top3_scores = sorted(article_scores, reverse=reverse)[:3]
+        # Manual justification based on top articles
+        justification = ""
+        if len(article_scores) >= 3:
+            # Get top 3 articles in support of verdict
+            reverse = verdict_score > 0
+            top3_scores = sorted(article_scores, reverse=reverse)[:3]
 
-                justification += (
-                    "The verdict was evaluated based on the following news articles:\n"
-                    + "(Listed based on relevance)\n"
-                )
+            justification += (
+                "The verdict was evaluated based on the following news articles:\n"
+                + "(Listed based on relevance)\n"
+            )
 
-                listcount = 1
-                for article in news_data.values():
-                    if article["score"] in top3_scores:
-                        # Filter alignments based on verdict type
-                        if verdict_score > 0:
-                            alignments = [
-                                a
-                                for a in article.get("alignments", [])
-                                if a["label"] == "entailment"
-                            ]
-                        else:
-                            alignments = [
-                                a
-                                for a in article.get("alignments", [])
-                                if a["label"] == "contradiction"
-                            ]
-
-                        if alignments:
-                            evidence = max(alignments, key=lambda x: x["score"])
-                            justification += (
-                                f"{listcount}. {article['source_name']} | {article['headline']}\n"
-                                + f"Evidence: {evidence['sentence']}\n"
-                            )
-                        else:
-                            # Fallback if no strong evidence
-                            justification += (
-                                f"{listcount}. {article['headline']}\n"
-                                + "Evidence: No strong evidence found\n"
-                            )
-                        listcount += 1
-            else:
-                # Handle cases with fewer than 3 articles
-                justification = (
-                    "The verdict was evaluated based on limited news articles:\n"
-                )
-                listcount = 1
-                for article in news_data.values():
+            listcount = 1
+            for article in news_data.values():
+                if article["score"] in top3_scores:
                     # Filter alignments based on verdict type
                     if verdict_score > 0:
                         alignments = [
@@ -465,20 +455,54 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                     if alignments:
                         evidence = max(alignments, key=lambda x: x["score"])
                         justification += (
-                            f"{listcount}. {article['headline']}\n"
+                            f"{listcount}. {article['source_name']} | {article['headline']}\n"
                             + f"Evidence: {evidence['sentence']}\n"
                         )
                     else:
+                        # Fallback if no strong evidence
                         justification += (
                             f"{listcount}. {article['headline']}\n"
                             + "Evidence: No strong evidence found\n"
                         )
                     listcount += 1
-                justification += "\nNote: Limited sources available. This claim needs more information for a conclusive verdict."
+        else:
+            # Handle cases with fewer than 3 articles
+            justification = (
+                "The verdict was evaluated based on limited news articles:\n"
+            )
+            listcount = 1
+            for article in news_data.values():
+                # Filter alignments based on verdict type
+                if verdict_score > 0:
+                    alignments = [
+                        a
+                        for a in article.get("alignments", [])
+                        if a["label"] == "entailment"
+                    ]
+                else:
+                    alignments = [
+                        a
+                        for a in article.get("alignments", [])
+                        if a["label"] == "contradiction"
+                    ]
 
-            results["verdict"] = verdict
-            results["justification"] = justification
-            results["confidence"] = confidence
+                if alignments:
+                    evidence = max(alignments, key=lambda x: x["score"])
+                    justification += (
+                        f"{listcount}. {article['headline']}\n"
+                        + f"Evidence: {evidence['sentence']}\n"
+                    )
+                else:
+                    justification += (
+                        f"{listcount}. {article['headline']}\n"
+                        + "Evidence: No strong evidence found\n"
+                    )
+                listcount += 1
+            justification += "\nNote: Limited sources available. This claim needs more information for a conclusive verdict."
+
+        results["verdict"] = verdict
+        results["justification"] = justification
+        results["confidence"] = confidence
 
         # Always include article URLs and headlines
         results["sources"] = list(news_data.keys())
