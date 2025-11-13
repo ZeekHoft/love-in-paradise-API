@@ -554,6 +554,30 @@ def aggregate_scores(final_scores):
     return average_score
 
 
+def validate(expected: bool, claim: str, is_llm: bool):
+    """
+    Validate if algorithm returns the correct expected verdict
+    """
+    lip = love_in_paradise(claim, use_llm=is_llm)
+    final = None
+    for result in lip:
+        final = result
+
+    verdict_result = None
+    verdict: str = final["verdict"]
+    if "true" in verdict.lower():
+        verdict_result = True
+    elif "false" in verdict.lower():
+        verdict_result = False
+
+    if verdict_result is None:
+        return None
+    elif expected == verdict_result:
+        return True
+    else:
+        return False
+
+
 if __name__ == "__main__":
     # New way to run code:
     lip = love_in_paradise(news, use_llm=False)
