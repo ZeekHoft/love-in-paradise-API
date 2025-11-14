@@ -20,7 +20,14 @@ ACCEPT_LIST = ["news claim", "statement", "question"]
 news = "CLTG Builders worked with the Discayas for Davao projects"
 # news = "Some celebrities participated in assisting Cebu earthquake victims."
 # news = "A Chinese Coast Guard ship fired its water cannon at a Philippine vessel near the West Philippine Sea."
+
+# Instantiate classes that have models or take time to load
+print("Loading models...")
 nlp = spacy.load("en_core_web_sm")
+log_collector = DocumentLogs()
+tokenizer = Eng_Tokenization_NLP(nlp=nlp)
+sentence_similarity = SentenceSimilarity(nlp)
+info_ext = OpenInformationExtraction()
 
 
 def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
@@ -40,7 +47,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         "currentProcess": None,
         "progress": 0.0,
     }
-    log_collector = DocumentLogs()
+
     try:
         results["currentProcess"] = "Checking if claim is verifiable"
         results["progress"] = 1 / 8
@@ -50,7 +57,6 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         claim_input = claim
 
         # Tokenize
-        tokenizer = Eng_Tokenization_NLP()
         tokenizer.tokenizationProcess(word_list=claim_input.split())
         print("Finished tokenization.")
 
@@ -160,7 +166,6 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # SEMANTIC SENTENCE SEARCH
         # Filtering out the most relevant data
         print("Finding relevant data:")
-        sentence_similarity = SentenceSimilarity(nlp)
         sentence_similarity.set_main_sentence(claim_input)
         relevant_sentences = {}
         urls_to_remove = []
@@ -261,7 +266,6 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # Information Extraction
         # ===============================================================
         # Gets subject, predicate, object triples
-        info_ext = OpenInformationExtraction()
         claim_triples = info_ext.generate_triples(claim_input)
         print(f"Claim triples: {claim_triples}")
 
