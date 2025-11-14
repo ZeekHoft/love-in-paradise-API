@@ -1,17 +1,17 @@
 import spacy
 import re
-# from util import tokenized, list_pos, target, pos_tokens
 
 
-nlp = spacy.load("en_core_web_sm")
-text = ("The president of Britain was caught cleaning his brothers toilet").split()
-
-
-# Enlgish tokenization class. Needs en_core_web_sm installed first.
 class Eng_Tokenization_NLP(object):
-    
-    def __init__(self):
-        self.nlp = spacy.load("en_core_web_sm")
+    """
+    English tokenization class. Needs en_core_web_sm installed first.
+    """
+
+    def __init__(self, nlp=None):
+        if nlp is None:
+            self.nlp = spacy.load("en_core_web_sm")
+        else:
+            self.nlp = nlp
         self.tokenized = []
         self.list_pos = []
         self.pos_tokens = {}
@@ -31,12 +31,9 @@ class Eng_Tokenization_NLP(object):
         combined_words = " ".join(self.tokenized).replace("-", "_")
         doc = self.nlp(re.sub("[^A-Za-z0-9_]+", " ", combined_words))
         for tokens in doc:
-            # uncomment the code to check what other Parts of speech you want to add
-
-            # print(f"tokenzzz: {tokens.pos_}")
+            # print(f"Parts of speech in token: {tokens.pos_}")
             current_word = tokens.text.replace("_", "-")
             if tokens.pos_ in self.target:
-                global elements
                 elements = f"{tokens.pos_} {current_word}"
                 # print(elements)
             self.list_pos.append(tokens.pos_)
@@ -47,17 +44,3 @@ class Eng_Tokenization_NLP(object):
                 ]
             else:
                 self.pos_tokens[tokens.pos_].append(current_word)
-
-        # self.checkValidation()
-
-    # def isValidNews(self):
-    #     if all(items in list_pos for items in target):
-    #         # self.validNewsForChecking()
-    #         return True
-    #     else:
-    #         # self.invalidNewsForChecking()
-    #         return False
-
-
-# sol = Eng_Tokenization_NLP()
-# print(sol.tokenizationProcess(text))
