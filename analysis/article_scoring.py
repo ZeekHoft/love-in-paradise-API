@@ -30,14 +30,15 @@ class ArticleScoring:
         sentences = article["sentences"]
         similarity_scores = article["similarity_scores"]
 
+        print(article["headline"])
+
+        # Set min and max scores if not already set
         if self.min_similarity is None:
             self.min_similarity = min(similarity_scores)
         if self.max_similarity is None:
             self.max_similarity = max(similarity_scores)
 
-        print(article["headline"])
-
-        # Triple comparison with claim
+        # Find common triples through information extraction
         common_count = 0
         for sentence in sentences:
             article_triples = self.oie.generate_triples(sentence)
@@ -57,14 +58,17 @@ class ArticleScoring:
         # print(f"  Alignments for this article: {len(alignments)}")
 
         evidence_values = {
-            "neutral": 0,
-            "entailment": 0,
-            "contradiction": 0,
+            "neutral": 0.0,
+            "entailment": 0.0,
+            "contradiction": 0.0,
         }
 
+        # Higher weight factor makes lower sim. scores have less effect
+        weight_factor = 1.1
         normalized_scores = []
-        weight_factor = 1.5
 
+        # Normalize all scores based on weight factor and similarity scores
+        # Sentences are rated higher if both similarity and alignment is high
         for i in range(len(sentences)):
             sentence = sentences[i]
             alignment = alignments[i]
@@ -105,6 +109,7 @@ class ArticleScoring:
 
         # print(f"  Entailment: {entailment}, Contradiction: {contradiction}")
 
+        # Get average and let range be within [-1, 1]
         if normalized_scores:
             final_score = np.average(normalized_scores)
             final_score = float(np.tanh(final_score))
