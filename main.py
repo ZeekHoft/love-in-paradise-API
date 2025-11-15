@@ -48,6 +48,12 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         "progress": 0.0,
     }
 
+    if claim is None or claim.strip() == "":
+        print("No claim was provided.")
+        results["justification"] = "No claim was provided. Please try again."
+        yield results
+        return
+
     try:
         results["currentProcess"] = "Checking if claim is verifiable"
         results["progress"] = 1 / 8
