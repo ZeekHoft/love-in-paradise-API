@@ -7,12 +7,14 @@ from analysis.article_scoring import ArticleScoring
 
 from webcrawling.search_articles import search_news
 from clasification.check import classify_input
-from logs import DocumentLogs
 
+from rank_bm25 import BM25Okapi
+from logs import DocumentLogs
 from typing import Generator
 import numpy as np
-import spacy
 import traceback
+import spacy
+import time
 
 
 ACCEPT_LIST = ["news claim", "statement", "question"]
@@ -165,7 +167,42 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             print(url)
             print(data["source_name"], "|", data["headline"])
 
-        results["currentProcess"] = "Searching for relevant information"
+        results["currentProcess"] = "Searching for relevant information (Part 1)"
+        results["progress"] = 4 / 8
+        yield results
+
+        # BM25 Sentence Level Keyword Search
+        # Searches related sentences based on bag of words algorithm.
+        # Inaccurate if words are not exact match
+        print("Performing BM25 sentence retrieval using query.")
+
+        article_sentences = {}
+        for url, data in news_data.items():
+            scraped_content = data["content"]
+            separated_sentences = tokenizer.separate_sentences(scraped_content)
+            tokenized_sentences = [
+                tokenizer.tokenize_sentence(sent) for sent in separated_sentences
+            ]
+
+            bm25 = BM25Okapi(tokenized_sentences)
+            bm25_scores = bm25.get_scores(tokenizer.tokenize_sentence(claim_input))
+            print(data["headline"])
+            if bm25_scores.any():
+                article_sentences[url] = []
+                for i in range(len(bm25_scores)):
+                    sentence = separated_sentences[i]
+                    score = bm25_scores[i]
+                    if score != 0.0:
+                        article_sentences[url].append(sentence)
+                        print(f"{score:.2f} - {sentence}")
+                print(
+                    f"{len(article_sentences[url])} out of {len(tokenized_sentences)} scored.\n"
+                )
+            else:
+                print("No related sentences found to query.\n")
+                article_sentences[url] = []
+
+        results["currentProcess"] = "Searching for relevant information (Part 2)"
         results["progress"] = 4 / 8
         yield results
 
@@ -179,7 +216,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         max_score = 0.0
         for url, data in news_data.items():
             similar_sentences = sentence_similarity.find_similar_sentences(
-                data["content"],
+                article_sentences[url],
                 cutoff_score=0.40,
             )
             print(data["headline"])
