@@ -627,10 +627,24 @@ def validate(expected: bool, claim: str, is_llm: bool):
 
 if __name__ == "__main__":
     # New way to run code:
-    lip = love_in_paradise(news, use_llm=False)
+    lip = love_in_paradise(input("Enter claim: "), use_llm=False)
     final = None
+    process_name = None
+    times = {}
+    start = time.time()
     for result in lip:
+        if process_name:
+            times[process_name] = time.time() - start
         print(result["currentProcess"])
+        start = time.time()
+        process_name = result["currentProcess"]
         final = result
+    times[process_name] = time.time() - start
+
+    print("\nRETURN DATA")
     for key, val in final.items():
         print(f"{key.title()}: {val}")
+
+    print("\nMEASURED TIME")
+    for key, val in times.items():
+        print(f"{val:.2f} seconds - {key}")
