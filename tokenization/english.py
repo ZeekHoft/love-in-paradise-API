@@ -30,6 +30,7 @@ class Eng_Tokenization_NLP(object):
 
         combined_words = " ".join(self.tokenized).replace("-", "_")
         doc = self.nlp(re.sub("[^A-Za-z0-9_]+", " ", combined_words))
+        print(f"Tokens in claim: {[token for token in doc]}")
         for tokens in doc:
             # print(f"Parts of speech in token: {tokens.pos_}")
             current_word = tokens.text.replace("_", "-")
@@ -44,3 +45,23 @@ class Eng_Tokenization_NLP(object):
                 ]
             else:
                 self.pos_tokens[tokens.pos_].append(current_word)
+
+    def separate_sentences(self, document: str) -> list[str]:
+        doc = self.nlp(document)
+        sentences = []
+        for sent in doc.sents:
+            sentences_found = re.split(r"\n+", sent.text)
+            sentences += self._clean_sentences(sentences_found)
+        return sentences
+
+    def tokenize_sentence(self, sentence: str):
+        doc = self.nlp(re.sub("[^A-Za-z0-9_]+", " ", sentence))
+        return [token.text.lower() for token in doc]
+
+    def _clean_sentences(self, sentences: list[str]):
+        valid_sentences = []
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence != "" and not sentence.startswith("Claim:"):
+                valid_sentences.append(sentence)
+        return valid_sentences
