@@ -648,3 +648,4 @@ if __name__ == "__main__":
     print("\nMEASURED TIME")
     for key, val in times.items():
         print(f"{val:.2f} seconds - {key}")
+    print(f"{sum(list(times.values())):.2f} seconds - Total")
