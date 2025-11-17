@@ -371,6 +371,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         results["progress"] = 6 / 8
         yield results
 
+        # Print all scores of articles and remove nonrelevant
         print("SCORE | ARTICLE")
         agree = []
         disagree = []
@@ -411,10 +412,16 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             winning_side = None
 
             # Score verdict only based on side with majority evidence
-            if conditions.count(True) == 3:
+            if conditions.count(True) == 3 or (
+                news_data.get(sorted_by_score[0], {}).get("score", 0) == max(agree)
+                and win_highest
+            ):
                 winning_side = "Agree"
                 article_scores = agree
-            elif conditions.count(False) == 3:
+            elif conditions.count(False) == 3 or (
+                news_data.get(sorted_by_score[0], {}).get("score", 0) == min(disagree)
+                and not win_highest
+            ):
                 winning_side = "Disagree"
                 article_scores = disagree
 
