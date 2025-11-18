@@ -5,6 +5,7 @@ from tokenization.english import Eng_Tokenization_NLP
 from llm.fact_checker_agent import FactCheckerAgent
 from analysis.article_scoring import ArticleScoring
 
+from justification.generate import generate_justification
 from webcrawling.search_articles import search_news
 from clasification.check import classify_input
 
@@ -382,9 +383,9 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             if score > 0.01 or score < -0.01:
                 print(f"{score: .5f} | {article['headline'][:50]}...")
                 if score > 0:
-                    agree.append(score)
+                    agree.append((url, score))
                 else:
-                    disagree.append(score)
+                    disagree.append((url, score))
             else:
                 urls_to_remove.append(url)
         print()
@@ -404,33 +405,39 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             return
 
         print("Statistics")
+        agree_scores = [s[1] for s in agree]
+        disagree_scores = [s[1] for s in disagree]
         if agree and disagree:
-            win_count = len(agree) >= len(disagree)
-            win_highest = max(agree) > abs(min(disagree))
-            win_total = sum(agree) > abs(sum(disagree))
+            win_count = len(agree_scores) >= len(disagree_scores)
+            win_highest = max(agree_scores) > abs(min(disagree_scores))
+            win_total = sum(agree_scores) > abs(sum(disagree_scores))
             conditions = [win_count, win_highest, win_total]
             winning_side = None
 
             # Score verdict only based on side with majority evidence
             if conditions.count(True) == 3 or (
-                news_data.get(sorted_by_score[0], {}).get("score", 0) == max(agree)
+                news_data.get(sorted_by_score[0], {}).get("score", 0)
+                == max(agree_scores)
                 and win_highest
             ):
                 winning_side = "Agree"
-                article_scores = agree
+                article_scores = agree_scores
             elif conditions.count(False) == 3 or (
-                news_data.get(sorted_by_score[0], {}).get("score", 0) == min(disagree)
+                news_data.get(sorted_by_score[0], {}).get("score", 0)
+                == min(disagree_scores)
                 and not win_highest
             ):
                 winning_side = "Disagree"
-                article_scores = disagree
+                article_scores = disagree_scores
 
-            print(f"Article Count: {len(agree)} Agree vs {len(disagree)} Disagree")
             print(
-                f"Highest Score: {max(agree):.2f} Agree vs {abs(min(disagree)):.2f} Disagree"
+                f"Article Count: {len(agree_scores)} Agree vs {len(disagree_scores)} Disagree"
             )
             print(
-                f"Total Overall: {sum(agree):.2f} Agree vs {abs(sum(disagree)):.2f} Disagree"
+                f"Highest Score: {max(agree_scores):.2f} Agree vs {abs(min(disagree_scores)):.2f} Disagree"
+            )
+            print(
+                f"Total Overall: {sum(agree_scores):.2f} Agree vs {abs(sum(disagree_scores)):.2f} Disagree"
             )
             print("Winner: ", end="")
             print("Agree" if win_count else "Disagree", end=", ")
@@ -478,81 +485,36 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
 
         # JUSTIFICATION GENERATION
         # Manual justification based on top articles
-        justification = ""
-        if len(article_scores) >= 3:
-            # Get top 3 articles in support of verdict
-            reverse = verdict_score > 0
-            top3_scores = sorted(article_scores, reverse=reverse)[:3]
 
-            justification += (
-                "The verdict was evaluated based on the following news articles:\n"
-                + "(Listed based on relevance)\n"
+        # Assign the scores to base justification on incase they were not already
+        if article_scores != agree_scores and article_scores != disagree_scores:
+            if verdict_score > 0:
+                article_scores = agree_scores
+            else:
+                article_scores = disagree_scores
+
+        evidence_scores = agree if verdict_score > 0 else disagree
+        alignment_label = "entailment" if verdict_score > 0 else "contradiction"
+
+        evidence_articles = []
+        for url, score in evidence_scores:
+            article = news_data[url]
+            alignments = [
+                a for a in article["alignments"] if a["label"] == alignment_label
+            ]
+            top_sentence = max(
+                alignments, key=lambda alignment: abs(alignment["score"])
+            )["sentence"]
+            evidence_articles.append(
+                {
+                    "headline": article["headline"],
+                    "source_name": article["source_name"],
+                    "url": url,
+                    "sentence": top_sentence,
+                }
             )
 
-            listcount = 1
-            for article in news_data.values():
-                if article["score"] in top3_scores:
-                    # Filter alignments based on verdict type
-                    if verdict_score > 0:
-                        alignments = [
-                            a
-                            for a in article.get("alignments", [])
-                            if a["label"] == "entailment"
-                        ]
-                    else:
-                        alignments = [
-                            a
-                            for a in article.get("alignments", [])
-                            if a["label"] == "contradiction"
-                        ]
-
-                    if alignments:
-                        evidence = max(alignments, key=lambda x: x["score"])
-                        justification += (
-                            f"{listcount}. {article['source_name']} | {article['headline']}\n"
-                            + f"Evidence: {evidence['sentence']}\n"
-                        )
-                    else:
-                        # Fallback if no strong evidence
-                        justification += (
-                            f"{listcount}. {article['headline']}\n"
-                            + "Evidence: No strong evidence found\n"
-                        )
-                    listcount += 1
-        else:
-            # Handle cases with fewer than 3 articles
-            justification = (
-                "The verdict was evaluated based on limited news articles:\n"
-            )
-            listcount = 1
-            for article in news_data.values():
-                # Filter alignments based on verdict type
-                if verdict_score > 0:
-                    alignments = [
-                        a
-                        for a in article.get("alignments", [])
-                        if a["label"] == "entailment"
-                    ]
-                else:
-                    alignments = [
-                        a
-                        for a in article.get("alignments", [])
-                        if a["label"] == "contradiction"
-                    ]
-
-                if alignments:
-                    evidence = max(alignments, key=lambda x: x["score"])
-                    justification += (
-                        f"{listcount}. {article['headline']}\n"
-                        + f"Evidence: {evidence['sentence']}\n"
-                    )
-                else:
-                    justification += (
-                        f"{listcount}. {article['headline']}\n"
-                        + "Evidence: No strong evidence found\n"
-                    )
-                listcount += 1
-            justification += "\nNote: Limited sources available. This claim needs more information for a conclusive verdict."
+        justification = generate_justification(evidence_articles, 3)
 
         results["verdict"] = verdict
         results["justification"] = justification
