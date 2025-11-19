@@ -168,7 +168,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             print(url)
             print(data["source_name"], "|", data["headline"])
 
-        results["currentProcess"] = "Searching for relevant information (Part 1)"
+        results["currentProcess"] = "Searching possible evidence using claim keywords"
         results["progress"] = 4 / 8
         yield results
 
@@ -203,7 +203,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                 print("No related sentences found to query.\n")
                 article_sentences[url] = []
 
-        results["currentProcess"] = "Searching for relevant information (Part 2)"
+        results["currentProcess"] = "Ranking evidence based on relevance"
         results["progress"] = 4 / 8
         yield results
 
@@ -211,7 +211,6 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # Filtering out the most relevant data
         print("Finding relevant data:")
         sentence_similarity.set_main_sentence(claim_input)
-        relevant_sentences = {}
         urls_to_remove = []
         min_score = 1.0
         max_score = 0.0
@@ -233,12 +232,10 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                     if score > max_score:
                         max_score = score
                     print(f"{score:.3f} | {sentence[:100]}")
-                    if url not in relevant_sentences.keys():
-                        relevant_sentences[url] = [sentence]
+                    if "sentences" not in news_data[url].keys():
                         news_data[url]["sentences"] = [sentence]
                         news_data[url]["similarity_scores"] = [score]
                     else:
-                        relevant_sentences[url].append(sentence)
                         news_data[url]["sentences"].append(sentence)
                         news_data[url]["similarity_scores"].append(score)
             print()
@@ -247,17 +244,17 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         for key_url in urls_to_remove:
             print(f"Removed News: {news_data[key_url]['headline']}")
             news_data.pop(key_url)
-        print()
 
+        print(f"\nTotal articles with relevant content: {len(news_data)}")
+
+        # Sort url articles by their max similarity score to identify most related ones
         sorted_by_score = sorted(
             news_data.keys(),
             key=lambda url: max(news_data[url]["similarity_scores"]),
             reverse=True,
         )
 
-        print(f"Total articles with relevant content: {len(relevant_sentences)}")
-
-        print(f"Sorted by similarity score:")
+        print(f"\nSorted by similarity score:")
         index = 1
         for url in sorted_by_score:
             print(
@@ -322,7 +319,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # Given a list of the most relevant sentences from articles, evaluate them against the claim
         # -> evidences = {"agree", "disagree", "neutral"}
 
-        print("Scoring each article")
+        print("\nScoring each article")
         article_scoring = ArticleScoring(
             oie=info_ext,
             claim=claim_input,
@@ -343,7 +340,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                 print(f"Latest score is {latest_score:.2f}. ", end="")
 
                 # Continue checking when scores are past threshold
-                if abs(latest_score) > 0.3:
+                if abs(latest_score) > 0.5:
                     last_score = None
                     previous_consistent = True
                     current_consistent = True
@@ -358,9 +355,9 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
                         stopped_early = True
                         break
                     else:
-                        print("Last 2 numbers are not consistent.")
+                        print("Last 2 numbers are inconsistent.")
                 else:
-                    print("First number.")
+                    print("Reset inconsistency counter.")
                 last_score = latest_score
                 previous_consistent = current_consistent
         if not stopped_early:
@@ -401,8 +398,18 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         if len(article_scores) == 0:
             print("No significant evidence found.")
             results["justification"] = "No significant evidence found."
+            results["currentProcess"] = "Complete"
+            results["progress"] = 8 / 8
             yield results
             return
+
+        # SCORE AGGREGATION
+        # ===============================================================
+        # More agree-ing evidences: higher confidence, -> True
+        # Few agree-ing evidences: low confidence,-> Likely True
+        # Divisive, 50-50 agree/disagree: Unsure, Need more information
+        # Few disagree-ing confidence: low confidence, -> Likely False
+        # More disagree-ing confidence: high confidence, -> False
 
         print("Statistics")
         agree_scores = [s[1] for s in agree]
@@ -414,7 +421,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             conditions = [win_count, win_highest, win_total]
             winning_side = None
 
-            # Score verdict only based on side with majority evidence
+            # Score verdict only based on side with majority evidence or if first article is highest rated
             if conditions.count(True) == 3 or (
                 news_data.get(sorted_by_score[0], {}).get("score", 0)
                 == max(agree_scores)
@@ -444,30 +451,21 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
             print("Agree" if win_highest else "Disagree", end=", ")
             print("Agree" if win_total else "Disagree")
             if winning_side is not None:
-                print(f"Most {winning_side}")
-
-        verdict_score = sum(article_scores) / len(article_scores)
-        print(
-            f"Final Score: {verdict_score}, Weighted Score: {aggregate_scores(article_scores)}"
-        )
-
-        # AGGREGATION
-        # ===============================================================
-        # More agree-ing evidences: higher confidence, -> True
-        # Few agree-ing evidences: low confidence,-> Likely True
-        # Divisive, 50-50 agree/disagree: Unsure, Need more information
-        # Few disagree-ing confidence: low confidence, -> Likely False
-        # More disagree-ing confidence: high confidence, -> False
+                print(f"Verdict will be based on: {winning_side}")
 
         results["currentProcess"] = "Finalizing score"
         results["progress"] = 7 / 8
         yield results
 
+        # Verdict Score: Average of all scores
+        verdict_score = sum(article_scores) / len(article_scores)
+        print(f"\nFinal Verdict Score: {verdict_score}")
+
         # Calculate confidence based on standard deviation
         standard_deviation = np.std(article_scores)
         confidence = (1 - standard_deviation / 2) * 100
         confidence = max(0, min(100, confidence))
-        print(f"Confidence Level: {confidence:.1f}%")
+        print(f"Confidence Level: {confidence:.1f}%\n")
 
         # Verdict Assigment
         THRESHOLD1 = 0.3
@@ -486,13 +484,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # JUSTIFICATION GENERATION
         # Manual justification based on top articles
 
-        # Assign the scores to base justification on incase they were not already
-        if article_scores != agree_scores and article_scores != disagree_scores:
-            if verdict_score > 0:
-                article_scores = agree_scores
-            else:
-                article_scores = disagree_scores
-
+        # Articles justification will base on
         evidence_scores = agree if verdict_score > 0 else disagree
         alignment_label = "entailment" if verdict_score > 0 else "contradiction"
 
@@ -516,23 +508,24 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
 
         justification = generate_justification(evidence_articles, 3)
 
+        # FINAL RETURN DATA
         results["verdict"] = verdict
         results["justification"] = justification
         results["confidence"] = confidence
-
-        # Always include article URLs and headlines
         results["sources"] = list(news_data.keys())
-        results["headlines"] = {
+        results["headlines"] = {  # Dict of headlines where url: headline
             key: value["headline"].replace('"', "'") for key, value in news_data.items()
         }
+        results["currentProcess"] = "Complete"
+        results["progress"] = 8 / 8
+
+        # Log data to Firebase
         log_collector.paradise_logs(
             log_collector.user_input(claim_input),
             log_collector.valid_claim(results),
             log_collector.search_log(search_query),
         )
 
-        results["currentProcess"] = "Complete"
-        results["progress"] = 8 / 8
         yield results
         return
 
@@ -545,29 +538,6 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         results["progress"] = 8 / 8
         yield results
         return
-
-
-def aggregate_scores(final_scores):
-
-    def calculate_weighted(score):
-        # Linear scaling weight
-        abs_score = abs(score)
-        if abs_score > 0.8:
-            weight = 2.0
-        elif abs_score > 5:
-            weight = 1.5
-        else:
-            weight = 1.0
-        return score * weight
-
-    # Calculate the total weighted score
-    total_weighted_score = 0
-    for score in final_scores:
-        total_weighted_score += calculate_weighted(score)
-
-    # Final average score
-    average_score = total_weighted_score / len(final_scores)
-    return average_score
 
 
 def validate(expected: bool, claim: str, is_llm: bool):
