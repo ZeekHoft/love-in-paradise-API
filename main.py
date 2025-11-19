@@ -28,7 +28,6 @@ news = "CLTG Builders worked with the Discayas for Davao projects"
 print("Loading models...")
 nlp = spacy.load("en_core_web_sm")
 log_collector = DocumentLogs()
-tokenizer = Eng_Tokenization_NLP(nlp=nlp)
 sentence_similarity = SentenceSimilarity(nlp)
 info_ext = OpenInformationExtraction()
 
@@ -66,6 +65,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         claim_input = claim
 
         # Tokenize
+        tokenizer = Eng_Tokenization_NLP(nlp=nlp)
         tokenizer.tokenizationProcess(word_list=claim_input.split())
         print("Finished tokenization.")
 
