@@ -533,7 +533,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         # Catch any unhandled exceptions
         print(f"Unexpected error in love_in_paradise: {e}")
         traceback.print_exc()
-        results["justification"] = f"Unexpected error: {str(e)}"
+        results["justification"] = f"Unexpected Error occurred"
         results["currentProcess"] = "Error"
         results["progress"] = 8 / 8
         yield results
