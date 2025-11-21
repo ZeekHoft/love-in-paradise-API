@@ -46,9 +46,6 @@ class ArticleScoring:
                 common = set(article_triples).intersection(set(self.claim_triples))
                 common_count += len(common)
 
-        # if common_count != 0:
-        #     print("Common triples found:", common_count)
-
         # Scores sentences based on entailment to claim
         # Returns list of {label, score, sentence}
         alignments = calculate_entailment(claim=self.claim, sentences=sentences)
@@ -93,7 +90,7 @@ class ArticleScoring:
                 case "contradiction":
                     sentence_score = -alignment_score * normalized_similarity
                 case _:
-                    sentence_score = 0
+                    sentence_score = 0.0
 
             if label != "neutral":
                 print(
@@ -102,12 +99,11 @@ class ArticleScoring:
 
             normalized_scores.append(sentence_score)
 
-            evidence_values[label] += alignment_score
-
-        entailment = evidence_values["entailment"] + common_count
-        contradiction = evidence_values["contradiction"]
-
-        # print(f"  Entailment: {entailment}, Contradiction: {contradiction}")
+        if common_count != 0:
+            triple_score = common_count / len(self.claim_triples)
+            print("Common triples found:", common_count, "Triple score:", triple_score)
+            if triple_score > 0.5:
+                normalized_scores.append(triple_score)
 
         # Get average and let range be within [-1, 1]
         if normalized_scores:
@@ -117,7 +113,6 @@ class ArticleScoring:
             final_score = 0.0
 
         # Score calculation
-        score = (entailment - contradiction) / (entailment + contradiction + 1)
         article["score"] = final_score
-        print(f"  Final score OLD: {score}, NEW:{final_score}\n")
+        print(f"  Final score: {final_score:.6f}\n")
         return final_score
