@@ -21,12 +21,22 @@ class SentenceSimilarity:
     # Searches for the most relevent/similar sentences using a base sentence
     def find_similar_sentences(self, content, cutoff_score=0.25):
 
-        # Separate content into list of sentences
-        doc = self.nlp(content)
-        tokenized_sentences = []
-        for sent in doc.sents:
-            sentences_found = re.split(r"\n+", sent.text)
-            tokenized_sentences += [s for s in sentences_found if s != ""]
+        if type(content) is str:
+            # Separate content into list of sentences
+            doc = self.nlp(content)
+            tokenized_sentences = []
+            for sent in doc.sents:
+                sentences_found = re.split(r"\n+", sent.text)
+                tokenized_sentences += self._clean_sentences(sentences_found)
+        elif type(content) is list:
+            tokenized_sentences = content
+        else:
+            print("Content provided is neither list nor string.")
+            return []
+
+        if tokenized_sentences == []:
+            print("Tokenized sentences is empty.")
+            return []
 
         # Encode sentences
         ts_encoding = self.model.encode(tokenized_sentences)
@@ -50,3 +60,11 @@ class SentenceSimilarity:
         ]
 
         return top_sentences
+
+    def _clean_sentences(self, sentences: list[str]):
+        valid_sentences = []
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence != "" and not sentence.startswith("Claim:"):
+                valid_sentences.append(sentence)
+        return valid_sentences
