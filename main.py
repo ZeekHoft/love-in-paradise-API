@@ -258,7 +258,7 @@ def love_in_paradise(claim, use_llm=False) -> Generator[dict, None, None]:
         index = 1
         for url in sorted_by_score:
             print(
-                f"{index:02}. {max(news_data[url]["similarity_scores"]):.2f} - {url}:"
+                f"{index:02}. {max(news_data[url]['similarity_scores']):.2f} - {url}:"
             )
             index += 1
         print()
