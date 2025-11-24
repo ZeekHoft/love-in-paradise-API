@@ -19,7 +19,7 @@ def generate_justification(
         for article in evidence_articles[:justification_count]:
             justification += (
                 f"{item_number}. {article['source_name']} | {article['headline']}\n"
-                + f"{article["url"]}\n"
+                + f"{article['url']}\n"
                 + f"Evidence: {article['sentence']}\n"
             )
             item_number += 1
@@ -44,7 +44,7 @@ def generate_justification(
         for article in evidence_articles:
             justification += (
                 f"{item_number}. {article['source_name']} | {article['headline']}\n"
-                + f"{article["url"]}\n"
+                + f"{article['url']}\n"
                 + f"Evidence: {article['sentence']}\n"
             )
             item_number += 1
