@@ -18,3 +18,4 @@ torch==2.8.0
 transformers==4.49.0
 gunicorn==23.0.0
 rank-bm25==0.2.2
+firebase_admin==7.1.0
