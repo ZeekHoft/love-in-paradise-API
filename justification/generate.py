@@ -30,7 +30,7 @@ def generate_justification(
         justification += "The verdict was made on a single online article:\n"
         justification += (
             f"{article['source_name']} | {article['headline']}\n"
-            + f"{article["url"]}\n"
+            + f"{article['url']}\n"
             + f"Evidence: {article['sentence']}\n"
         )
         justification += "\nNote: Limited sources available. Be mindful to review the article yourself or rephrase your claim and try again."
