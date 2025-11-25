@@ -1,63 +1,44 @@
 import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
+from firebase_admin import credentials, firestore
+import json
 import os
 from dotenv import load_dotenv
 
-
-
-try:
-    load_dotenv()
-    FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
-
-    if FIREBASE_CREDENTIALS is None:
-        raise ValueError("Credentials is not found")
-except Exception as e:
-    print(f"Error Loading Credentials: {e}")
-
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# print(os.path.exists(os.path.join(current_dir, FIREBASE_CREDENTIALS)))
-
+load_dotenv()
 
 class DocumentLogs:
 
     def __init__(self):
+        FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
 
-        self.cred_path = os.path.join(current_dir, FIREBASE_CREDENTIALS)
-        self.cred = credentials.Certificate(self.cred_path)
-        #initialize firebase app if not already done
+        if FIREBASE_CREDENTIALS is None:
+            raise ValueError("FIREBASE_CREDENTIALS is not found in environment variables")
+
+        # Convert JSON string → dict
+        try:
+            cred_dict = json.loads(FIREBASE_CREDENTIALS)
+        except Exception as e:
+            raise ValueError(f"Invalid FIREBASE_CREDENTIALS JSON: {e}")
+
+        cred = credentials.Certificate(cred_dict)
+
+        # initialize firebase app once
         if not firebase_admin._apps:
-            firebase_admin.initialize_app(self.cred)
+            firebase_admin.initialize_app(cred)
 
-        #now safely create the firestore client
         self.db = firestore.client()
 
-
-
-
-    def paradise_logs(self, input, valid, searches ):
+    def paradise_logs(self, input, valid, searches):
         doc_ref = self.db.collection('love-in-paradise-logs').document()
         data = {
             'input': input,
             'searches': searches,
-            'valid cliam': valid,
+            'valid claim': valid,
             'log id': doc_ref.id
         }
         print("Writing to Firestore...")
         doc_ref.set(data)
         print("Successfully written:", doc_ref.id)
-
-
-    
-    def user_input(self, user_input):
-        return user_input
-    def valid_claim(self, valid_claim):
-        return valid_claim
-    def search_log(self, search_log):
-        print("testing")
-        return search_log
 
 
 # logs = DocumentLogs()
