@@ -72,6 +72,8 @@ def handle_post_request():
         return {"error": str(e)}, 500
 
 
+"""
+
 # Redirect root to home.html
 @app.route("/")
 def index():
@@ -110,6 +112,7 @@ def serve_static(path):
     # If path doesn't exist, try serving home.html (for client-side routing)
     return send_from_directory("out", "home.html")
 
+"""
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8080)
