@@ -16,6 +16,6 @@ EXPOSE 8080
 
 # Tell Docker what command to run to start the app
 # CMD ["python", "app.py"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app", "--timeout" "120"]
 
 
